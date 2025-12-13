@@ -1,0 +1,128 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { getTenantContext, verifyTenantOwnership } from '@/lib/tenant-context'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { tenantSlug: string; id: string } }
+) {
+  try {
+    const { tenantId } = await getTenantContext()
+
+    const providerType = await prisma.providerType.findUnique({
+      where: { id: params.id },
+      include: {
+        _count: {
+          select: {
+            providers: true,
+          },
+        },
+      },
+    })
+
+    if (!providerType) {
+      return NextResponse.json(
+        { error: 'Provider type not found' },
+        { status: 404 }
+      )
+    }
+
+    await verifyTenantOwnership(providerType.tenantId)
+
+    return NextResponse.json({ providerType })
+  } catch (error: any) {
+    console.error('Provider type fetch error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch provider type', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { tenantSlug: string; id: string } }
+) {
+  try {
+    const { tenantId } = await getTenantContext()
+    const body = await request.json()
+
+    // Verify the provider type belongs to this tenant
+    const providerType = await prisma.providerType.findUnique({
+      where: { id: params.id },
+    })
+
+    if (!providerType) {
+      return NextResponse.json(
+        { error: 'Provider type not found' },
+        { status: 404 }
+      )
+    }
+
+    await verifyTenantOwnership(providerType.tenantId)
+
+    // Update the provider type
+    const updated = await prisma.providerType.update({
+      where: { id: params.id },
+      data: body,
+    })
+
+    return NextResponse.json({ providerType: updated })
+  } catch (error: any) {
+    console.error('Provider type update error:', error)
+    return NextResponse.json(
+      { error: 'Failed to update provider type', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { tenantSlug: string; id: string } }
+) {
+  try {
+    const { tenantId } = await getTenantContext()
+
+    // Verify the provider type belongs to this tenant
+    const providerType = await prisma.providerType.findUnique({
+      where: { id: params.id },
+      include: {
+        _count: {
+          select: { providers: true },
+        },
+      },
+    })
+
+    if (!providerType) {
+      return NextResponse.json(
+        { error: 'Provider type not found' },
+        { status: 404 }
+      )
+    }
+
+    await verifyTenantOwnership(providerType.tenantId)
+
+    // Check if there are providers using this type
+    if (providerType._count.providers > 0) {
+      return NextResponse.json(
+        {
+          error: `Cannot delete provider type with ${providerType._count.providers} provider(s). Remove providers first.`,
+        },
+        { status: 400 }
+      )
+    }
+
+    await prisma.providerType.delete({
+      where: { id: params.id },
+    })
+
+    return NextResponse.json({ message: 'Provider type deleted' })
+  } catch (error: any) {
+    console.error('Provider type deletion error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete provider type', details: error.message },
+      { status: 500 }
+    )
+  }
+}

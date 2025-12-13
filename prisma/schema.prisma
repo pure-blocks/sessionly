@@ -1,0 +1,450 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTHENTICATION MODELS
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?   // For credentials login
+  image         String?
+
+  // Multi-tenant relationship
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Provider relationship (if user is a provider)
+  providerId    String?   @unique
+  provider      Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  role          String    @default("user") // "admin", "provider", "user"
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+
+  @@index([email])
+  @@index([tenantId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// MULTI-TENANT MODELS
+// ============================================
+
+model Tenant {
+  id                String            @id @default(cuid())
+  name              String
+  slug              String            @unique
+  domain            String?           @unique
+
+  // Branding
+  logoUrl           String?
+  primaryColor      String?           @default("#3B82F6")
+  secondaryColor    String?           @default("#10B981")
+
+  // Business Info
+  email             String
+  phone             String?
+  website           String?
+  description       String?
+
+  // Configuration
+  timezone          String            @default("UTC")
+  currency          String            @default("USD")
+  isActive          Boolean           @default(true)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  users             User[]
+  providerTypes     ProviderType[]
+  providers         Provider[]
+  serviceTemplates  ServiceTemplate[]
+  bookings          Booking[]
+  categories        Category[]
+  config            TenantConfig?
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model ProviderType {
+  id                      String            @id @default(cuid())
+  tenantId                String
+  tenant                  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name                    String
+  nameSingular            String
+  slug                    String
+  description             String?
+  icon                    String?
+
+  // Default settings for this provider type
+  defaultSlotDuration     Int               @default(60)
+  defaultSlotCapacity     Int               @default(1)
+  allowGroupSessions      Boolean           @default(false)
+  requireApproval         Boolean           @default(false)
+
+  displayOrder            Int               @default(0)
+  isActive                Boolean           @default(true)
+
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  // Relations
+  providers               Provider[]
+  serviceTemplates        ServiceTemplate[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Provider {
+  id                String            @id @default(cuid())
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  providerTypeId    String
+  providerType      ProviderType      @relation(fields: [providerTypeId], references: [id], onDelete: Cascade)
+
+  name              String
+  email             String
+  slug              String
+  bio               String?
+  profileImageUrl   String?
+
+  // Portfolio fields
+  title             String?           // Professional title/tagline
+  yearsExperience   Int?              // Years of experience
+  certifications    String?           // JSON array of certifications
+  specialties       String?           // JSON array of specialties/skills
+  galleryImages     String?           // JSON array of image URLs
+  videoUrl          String?           // Intro/demo video URL
+  socialLinks       String?           // JSON object {instagram, facebook, linkedin, twitter, website}
+
+  // Provider-specific settings
+  isActive          Boolean           @default(true)
+  acceptingBookings Boolean           @default(true)
+
+  // Pricing
+  defaultHourlyRate Float?            // Default price per hour
+
+  // Custom fields (stored as JSON)
+  customFields      String?           // JSON string
+
+  categoryId        String?
+  category          Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  user              User?
+  availability      Availability[]
+  bookings          Booking[]
+  services          ProviderService[]
+  testimonials      Testimonial[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([providerTypeId])
+  @@index([email])
+}
+
+model Testimonial {
+  id                String            @id @default(cuid())
+  providerId        String
+  provider          Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  clientName        String
+  clientTitle       String?           // e.g., "Marathon Runner", "Business Executive"
+  clientImage       String?           // Optional client photo
+  rating            Int               @default(5) // 1-5 stars
+  text              String            // Testimonial text
+  isApproved        Boolean           @default(false)
+  isFeatured        Boolean           @default(false)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([providerId])
+  @@index([isApproved])
+}
+
+model Category {
+  id                String            @id @default(cuid())
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name              String
+  slug              String
+  description       String?
+  displayOrder      Int               @default(0)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  providers         Provider[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model ServiceTemplate {
+  id                String            @id @default(cuid())
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  providerTypeId    String?
+  providerType      ProviderType?     @relation(fields: [providerTypeId], references: [id], onDelete: Cascade)
+
+  name              String
+  description       String?
+  category          String
+
+  // Default pricing
+  defaultPrice      Float?
+  pricingModel      String            @default("fixed")
+
+  // Default slot settings
+  defaultDuration   Int               @default(60)
+  defaultCapacity   Int               @default(1)
+  allowGroupBooking Boolean           @default(false)
+
+  // Base and custom fields (stored as JSON)
+  baseFields        String            // JSON string
+  customFields      String?           // JSON string
+
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  providerServices  ProviderService[]
+
+  @@index([tenantId])
+  @@index([category])
+}
+
+model ProviderService {
+  id                String            @id @default(cuid())
+  providerId        String
+  provider          Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  templateId        String?
+  template          ServiceTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  name              String
+  description       String?
+
+  // Pricing
+  price             Float?
+  pricingModel      String            @default("fixed")
+  pricingRules      String?           // JSON string for flexible pricing rules
+
+  // Slot configuration
+  duration          Int               @default(60)
+  maxCapacity       Int               @default(1)
+  allowGroupBooking Boolean           @default(false)
+
+  // Custom field values (stored as JSON)
+  customFieldValues String?           // JSON string
+
+  isActive          Boolean           @default(true)
+  displayOrder      Int               @default(0)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  availability      Availability[]
+
+  @@index([providerId])
+}
+
+model TenantConfig {
+  id                    String            @id @default(cuid())
+  tenantId              String            @unique
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Booking settings
+  minBookingNotice      Int               @default(60)
+  maxBookingAdvance     Int               @default(90)
+  allowCancellation     Boolean           @default(true)
+  cancellationWindow    Int               @default(24)
+
+  // Slot settings
+  defaultSlotDuration   Int               @default(60)
+  slotBuffer            Int               @default(0)
+
+  // Notification settings
+  sendConfirmationEmail Boolean           @default(true)
+  sendReminderEmail     Boolean           @default(true)
+  reminderHoursBefore   Int               @default(24)
+
+  // Custom configurations (stored as JSON)
+  bookingFormFields     String?           // JSON string
+  businessHours         String?           // JSON string
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+}
+
+// ============================================
+// UPDATED MODELS (Multi-tenant aware)
+// ============================================
+
+model Availability {
+  id              String           @id @default(cuid())
+
+  // Legacy field (keep for backward compatibility during migration)
+  trainerId       String?
+
+  // New multi-tenant field (optional during migration)
+  providerId      String?
+  provider        Provider?        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  serviceId       String?
+  service         ProviderService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  date            DateTime
+  startTime       String
+  endTime         String
+
+  // Session configuration
+  isGroupSession  Boolean          @default(false)
+  maxCapacity     Int              @default(1)
+  currentBookings Int              @default(0)
+
+  // Pricing
+  price           Float?
+  pricingRules    String?          // JSON string for flexible pricing rules
+
+  // Status
+  isActive        Boolean          @default(true)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  bookings        Booking[]
+
+  @@index([providerId])
+  @@index([trainerId])
+  @@index([date])
+  @@index([isActive])
+}
+
+model Booking {
+  id                 String       @id @default(cuid())
+
+  // New multi-tenant fields (optional during migration)
+  tenantId           String?
+  tenant             Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  availabilityId     String
+  availability       Availability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+
+  // Legacy field (keep for backward compatibility during migration)
+  trainerId          String?
+
+  // New multi-tenant field (optional during migration)
+  providerId         String?
+  provider           Provider?    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  // Client information
+  clientName         String
+  clientEmail        String
+  clientPhone        String?
+
+  // Booking details
+  partySize          Int          @default(1)
+  openToSharing      Boolean      @default(false)
+  pricePerPerson     Float?
+  totalPrice         Float?
+
+  // Custom form data (stored as JSON)
+  customFormData     String?      // JSON string
+
+  notes              String?
+
+  // Status management
+  status             String       @default("confirmed")
+  cancellationReason String?
+  cancelledAt        DateTime?
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([tenantId])
+  @@index([providerId])
+  @@index([trainerId])
+  @@index([clientEmail])
+  @@index([availabilityId])
+  @@index([status])
+}
+
+// ============================================
+// LEGACY MODELS (For backward compatibility)
+// ============================================
+
+model Trainer {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  bio           String?
+  rateCard      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
