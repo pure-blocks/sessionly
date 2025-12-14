@@ -63,7 +63,7 @@ export function getPricingLabel(key: string): string {
 /**
  * Validate pricing table structure
  */
-export function validatePricingTable(table: any): {
+export function validatePricingTable(table: unknown): {
   valid: boolean
   errors: string[]
 } {

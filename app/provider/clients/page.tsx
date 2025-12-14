@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import PricingTableInput from '@/components/PricingTableInput'
 
 interface Client {
   id: string
   name: string
   email: string
   phone: string | null
-  customHourlyRate: number | null
+  pricingTable: Record<string, number> | null
   inviteAcceptedAt: string | null
   userId: string | null
   createdAt: string
@@ -33,8 +34,8 @@ export default function ProviderClientsPage() {
     email: '',
     phone: '',
     notes: '',
-    customHourlyRate: '',
-    customPricingNotes: '',
+    pricingTable: {} as Record<string, number>,
+    pricingNotes: '',
     sendInvite: true,
   })
 
@@ -76,10 +77,7 @@ export default function ProviderClientsPage() {
       const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          customHourlyRate: formData.customHourlyRate ? parseFloat(formData.customHourlyRate) : null,
-        }),
+        body: JSON.stringify(formData),
       })
 
       const data = await res.json()
@@ -100,8 +98,8 @@ export default function ProviderClientsPage() {
         email: '',
         phone: '',
         notes: '',
-        customHourlyRate: '',
-        customPricingNotes: '',
+        pricingTable: {},
+        pricingNotes: '',
         sendInvite: true,
       })
       setShowAddModal(false)
@@ -207,9 +205,9 @@ export default function ProviderClientsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {client.customHourlyRate ? (
+                      {client.pricingTable && Object.keys(client.pricingTable).length > 0 ? (
                         <div className="text-sm font-medium text-green-600">
-                          ${client.customHourlyRate}/hr
+                          {Object.keys(client.pricingTable).length} rate{Object.keys(client.pricingTable).length > 1 ? 's' : ''}
                         </div>
                       ) : (
                         <div className="text-sm text-gray-400">Standard rate</div>
@@ -292,16 +290,10 @@ export default function ProviderClientsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Custom Hourly Rate ($)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.customHourlyRate}
-                    onChange={(e) => setFormData({ ...formData, customHourlyRate: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Leave empty for standard rate"
+                  <PricingTableInput
+                    value={formData.pricingTable}
+                    onChange={(table) => setFormData({ ...formData, pricingTable: table })}
+                    baseRate={100}
                   />
                 </div>
 
@@ -311,8 +303,8 @@ export default function ProviderClientsPage() {
                   </label>
                   <input
                     type="text"
-                    value={formData.customPricingNotes}
-                    onChange={(e) => setFormData({ ...formData, customPricingNotes: e.target.value })}
+                    value={formData.pricingNotes}
+                    onChange={(e) => setFormData({ ...formData, pricingNotes: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., Loyal customer discount"
                   />

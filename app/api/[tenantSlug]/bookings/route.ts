@@ -3,8 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { getTenantContext } from '@/lib/tenant-context'
 import { sendBookingConfirmationToClient, sendBookingNotificationToProvider } from '@/lib/email'
 import { format } from 'date-fns'
-import { calculatePrice } from '@/lib/pricing'
-import { PricingRules } from '@/types/pricing'
 import { Prisma } from '@prisma/client'
 
 export async function GET(
@@ -100,20 +98,10 @@ export async function POST(
       }, { status: 400 })
     }
 
-    // Calculate price using pricing rules
-    let pricingRules: PricingRules | null = null
-    if (availability.pricingRules) {
-      try {
-        pricingRules = JSON.parse(availability.pricingRules) as PricingRules
-      } catch (error) {
-        console.error('Failed to parse pricing rules:', error)
-      }
-    }
-
-    // Calculate price based on rules or fallback to availability.price
-    const pricing = calculatePrice(partySize, pricingRules, availability.price || undefined)
-    const pricePerPerson = pricing.pricePerPerson
-    const totalPrice = pricing.totalPrice
+    // Simple pricing calculation (TODO: Use pricing table)
+    const basePrice = sessionPrice || availability.price || 0
+    const pricePerPerson = basePrice / partySize
+    const totalPrice = basePrice
 
     // Create booking and update availability in a transaction
     const booking = await prisma.$transaction(async (tx) => {
