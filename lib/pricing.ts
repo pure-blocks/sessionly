@@ -118,19 +118,21 @@ export function getPriceFromTable(
 export function getPricingOptions(table: PricingTable | null): PricingOption[] {
   if (!table) return []
 
-  return Object.entries(table)
-    .map(([key, price]) => {
-      const parsed = parsePricingKey(key)
-      if (!parsed) return null
+  const options: PricingOption[] = []
 
-      return {
+  for (const [key, price] of Object.entries(table)) {
+    const parsed = parsePricingKey(key)
+    if (parsed) {
+      options.push({
         type: parsed.type,
         duration: parsed.duration,
         price,
         label: getPricingLabel(key),
-      }
-    })
-    .filter((opt): opt is PricingOption => opt !== null)
+      })
+    }
+  }
+
+  return options
 }
 
 /**

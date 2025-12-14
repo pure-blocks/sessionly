@@ -38,12 +38,11 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         name: true,
-        customHourlyRate: true,
-        customPricingNotes: true,
+        pricingTable: true,
+        pricingNotes: true,
         provider: {
           select: {
             name: true,
-            defaultHourlyRate: true,
           }
         }
       }
@@ -57,12 +56,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      hasCustomPricing: !!clientRecord.customHourlyRate,
+      hasCustomPricing: !!clientRecord.pricingTable,
       clientInfo: {
         name: clientRecord.name,
-        customRate: clientRecord.customHourlyRate,
-        standardRate: clientRecord.provider.defaultHourlyRate,
-        pricingNotes: clientRecord.customPricingNotes,
+        pricingTable: clientRecord.pricingTable,
+        pricingNotes: clientRecord.pricingNotes,
       }
     })
   } catch (error) {

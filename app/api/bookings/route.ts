@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { getPriceFromTable, calculateDuration, getSessionTypeFromPartySize } from '@/lib/pricing'
 
 export async function GET(request: NextRequest) {
   try {
@@ -107,17 +108,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate price per person based on custom pricing or session type
+    // Calculate session duration and type
+    const duration = calculateDuration(availability.startTime, availability.endTime)
+    const determinedSessionType = sessionType || getSessionTypeFromPartySize(partySize)
+
+    // Calculate price based on pricing tables
     let pricePerPerson = sessionPrice ? sessionPrice / partySize : null
     let totalPrice = sessionPrice
 
-    // Apply custom pricing if client has a negotiated rate
-    if (clientRecord?.customHourlyRate && availability.provider) {
-      // Assume availability duration is in the slot (you might need to calculate this differently)
-      // For now, we'll just use the custom hourly rate
-      totalPrice = clientRecord.customHourlyRate
-      pricePerPerson = totalPrice / partySize
-      appliedCustomPricing = true
+    // Try to get price from client's pricing table first
+    if (clientRecord?.pricingTable) {
+      const clientPrice = getPriceFromTable(
+        clientRecord.pricingTable as Record<string, number>,
+        determinedSessionType,
+        duration
+      )
+      if (clientPrice !== null) {
+        totalPrice = clientPrice
+        pricePerPerson = totalPrice / partySize
+        appliedCustomPricing = true
+      }
+    }
+
+    // Fall back to availability's pricing table if no custom pricing
+    if (!appliedCustomPricing && availability.pricingTable) {
+      const availabilityPrice = getPriceFromTable(
+        availability.pricingTable as Record<string, number>,
+        determinedSessionType,
+        duration
+      )
+      if (availabilityPrice !== null) {
+        totalPrice = availabilityPrice
+        pricePerPerson = totalPrice / partySize
+      }
     }
 
     // Create booking and update availability in a transaction
@@ -155,7 +178,7 @@ export async function POST(request: NextRequest) {
             select: {
               id: true,
               name: true,
-              customHourlyRate: true,
+              pricingTable: true,
             }
           }
         }

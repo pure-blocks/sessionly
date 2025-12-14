@@ -9,9 +9,10 @@ import { prisma } from '@/lib/prisma'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
+    const { clientId } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -35,7 +36,7 @@ export async function GET(
 
     const client = await prisma.client.findFirst({
       where: {
-        id: params.clientId,
+        id: clientId,
         providerId: user.provider.id,
       },
       include: {
@@ -91,9 +92,10 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
+    const { clientId } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -118,7 +120,7 @@ export async function PATCH(
     // Verify client belongs to this provider
     const existingClient = await prisma.client.findFirst({
       where: {
-        id: params.clientId,
+        id: clientId,
         providerId: user.provider.id,
       }
     })
@@ -142,7 +144,7 @@ export async function PATCH(
 
     // Update client
     const client = await prisma.client.update({
-      where: { id: params.clientId },
+      where: { id: clientId },
       data: {
         ...(name && { name }),
         ...(phone !== undefined && { phone }),
@@ -172,9 +174,10 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { clientId: string } }
+  { params }: { params: Promise<{ clientId: string }> }
 ) {
   try {
+    const { clientId } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -199,7 +202,7 @@ export async function DELETE(
     // Verify client belongs to this provider
     const existingClient = await prisma.client.findFirst({
       where: {
-        id: params.clientId,
+        id: clientId,
         providerId: user.provider.id,
       }
     })
@@ -213,7 +216,7 @@ export async function DELETE(
 
     // Soft delete by deactivating
     await prisma.client.update({
-      where: { id: params.clientId },
+      where: { id: clientId },
       data: { isActive: false }
     })
 

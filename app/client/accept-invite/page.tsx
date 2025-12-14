@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -11,7 +11,7 @@ interface ClientInfo {
   tenantName: string
 }
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -171,7 +171,7 @@ export default function AcceptInvitePage() {
             Welcome to {clientInfo?.tenantName}
           </h1>
           <p className="text-gray-600">
-            You've been invited by <span className="font-semibold">{clientInfo?.providerName}</span>
+            You&apos;ve been invited by <span className="font-semibold">{clientInfo?.providerName}</span>
           </p>
         </div>
 
@@ -252,5 +252,20 @@ export default function AcceptInvitePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AcceptInviteContent />
+    </Suspense>
   )
 }
