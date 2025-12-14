@@ -1,0 +1,12 @@
+// SQLite schema for local development
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Copy your full schema here if using this approach
+// Or use schema switcher script

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
@@ -37,6 +39,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if user is logged in
+    const session = await getServerSession(authOptions)
+
     const body = await request.json()
     const {
       availabilityId,
@@ -53,12 +58,17 @@ export async function POST(request: NextRequest) {
     const availability = await prisma.availability.findUnique({
       where: { id: availabilityId },
       include: {
-        bookings: true
+        bookings: true,
+        provider: true,
       }
     })
 
     if (!availability) {
       return NextResponse.json({ error: 'Availability slot not found' }, { status: 404 })
+    }
+
+    if (!availability.provider && !availability.trainerId) {
+      return NextResponse.json({ error: 'Provider information not found' }, { status: 400 })
     }
 
     // Check if slot has enough capacity for the party size
@@ -69,8 +79,46 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Calculate price per person based on session type
-    const pricePerPerson = sessionPrice ? sessionPrice / partySize : null
+    // Check if logged-in user is a client of this provider
+    let clientRecord = null
+    let finalClientName = clientName
+    let finalClientEmail = clientEmail
+    let appliedCustomPricing = false
+
+    if (session?.user?.email) {
+      // Look up client record by email and provider
+      const providerId = availability.providerId
+
+      if (providerId) {
+        clientRecord = await prisma.client.findFirst({
+          where: {
+            email: session.user.email.toLowerCase(),
+            providerId: providerId,
+            isActive: true,
+          }
+        })
+
+        if (clientRecord) {
+          // Use client's information from their record
+          finalClientName = clientRecord.name
+          finalClientEmail = clientRecord.email
+          appliedCustomPricing = true
+        }
+      }
+    }
+
+    // Calculate price per person based on custom pricing or session type
+    let pricePerPerson = sessionPrice ? sessionPrice / partySize : null
+    let totalPrice = sessionPrice
+
+    // Apply custom pricing if client has a negotiated rate
+    if (clientRecord?.customHourlyRate && availability.provider) {
+      // Assume availability duration is in the slot (you might need to calculate this differently)
+      // For now, we'll just use the custom hourly rate
+      totalPrice = clientRecord.customHourlyRate
+      pricePerPerson = totalPrice / partySize
+      appliedCustomPricing = true
+    }
 
     // Create booking and update availability in a transaction
     const booking = await prisma.$transaction(async (tx) => {
@@ -80,7 +128,7 @@ export async function POST(request: NextRequest) {
         data: {
           currentBookings: { increment: partySize },
           // Set price on first booking if not already set
-          ...(availability.price === null && sessionPrice ? { price: sessionPrice } : {})
+          ...(availability.price === null && totalPrice ? { price: totalPrice } : {})
         }
       })
 
@@ -89,21 +137,35 @@ export async function POST(request: NextRequest) {
         data: {
           availabilityId,
           trainerId: availability.trainerId,
-          clientName,
-          clientEmail,
+          providerId: availability.providerId,
+          tenantId: availability.provider?.tenantId,
+          clientId: clientRecord?.id,
+          clientName: finalClientName,
+          clientEmail: finalClientEmail,
           notes,
           partySize,
           openToSharing,
-          pricePerPerson
+          pricePerPerson,
+          totalPrice,
         },
         include: {
           provider: true,
-          availability: true
+          availability: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              customHourlyRate: true,
+            }
+          }
         }
       })
     })
 
-    return NextResponse.json(booking, { status: 201 })
+    return NextResponse.json({
+      ...booking,
+      appliedCustomPricing,
+    }, { status: 201 })
   } catch (error) {
     console.error('Booking error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'

@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL") // For migrations (bypasses connection pooling)
 }
 
 // ============================================
@@ -37,6 +38,7 @@ model User {
 
   accounts      Account[]
   sessions      Session[]
+  clientProfile Client?   // If user is a client
 
   @@index([email])
   @@index([tenantId])
@@ -80,6 +82,23 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model InvitationCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  email       String?   // Optional: restrict invitation to specific email
+  maxUses     Int       @default(1)
+  usedCount   Int       @default(0)
+  expiresAt   DateTime? // Optional expiration date
+  isActive    Boolean   @default(true)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([code])
+  @@index([isActive])
+  @@index([email])
+}
+
 // ============================================
 // MULTI-TENANT MODELS
 // ============================================
@@ -113,6 +132,7 @@ model Tenant {
   users             User[]
   providerTypes     ProviderType[]
   providers         Provider[]
+  clients           Client[]
   serviceTemplates  ServiceTemplate[]
   bookings          Booking[]
   categories        Category[]
@@ -194,6 +214,7 @@ model Provider {
 
   // Relations
   user              User?
+  clients           Client[]
   availability      Availability[]
   bookings          Booking[]
   services          ProviderService[]
@@ -203,6 +224,46 @@ model Provider {
   @@index([tenantId])
   @@index([providerTypeId])
   @@index([email])
+}
+
+model Client {
+  id                String            @id @default(cuid())
+  providerId        String
+  provider          Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Client information
+  name              String
+  email             String
+  phone             String?
+  notes             String?           // Provider's notes about this client
+
+  // Custom pricing for this client
+  customHourlyRate  Float?            // Negotiated rate
+  customPricingNotes String?          // Notes about pricing arrangement
+
+  // Account linking
+  userId            String?           @unique
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Invitation tracking
+  invitedAt         DateTime?
+  inviteToken       String?           @unique
+  inviteAcceptedAt  DateTime?
+
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  bookings          Booking[]
+
+  @@unique([providerId, email])
+  @@index([providerId])
+  @@index([tenantId])
+  @@index([email])
+  @@index([userId])
 }
 
 model Testimonial {
@@ -404,7 +465,11 @@ model Booking {
   providerId         String?
   provider           Provider?    @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  // Client information
+  // Client relationship (links to registered client if exists)
+  clientId           String?
+  client             Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Client information (kept for non-registered clients or as backup)
   clientName         String
   clientEmail        String
   clientPhone        String?
@@ -431,6 +496,7 @@ model Booking {
   @@index([tenantId])
   @@index([providerId])
   @@index([trainerId])
+  @@index([clientId])
   @@index([clientEmail])
   @@index([availabilityId])
   @@index([status])

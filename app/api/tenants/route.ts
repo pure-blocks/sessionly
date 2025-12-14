@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { generateUniqueTenantSlug, generateUniqueProviderTypeSlug } from '@/lib/slug'
+import { generateUniqueTenantSlug, generateSlug } from '@/lib/slug'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,12 +21,62 @@ export async function POST(request: NextRequest) {
       providerTypeName,
       providerTypeNameSingular,
       providerTypeDescription,
+      // Invitation code (required)
+      invitationCode,
     } = body
 
     // Validation
     if (!name || !email) {
       return NextResponse.json(
         { error: 'Name and email are required' },
+        { status: 400 }
+      )
+    }
+
+    if (!invitationCode) {
+      return NextResponse.json(
+        { error: 'Invitation code is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate invitation code
+    const invitation = await prisma.invitationCode.findUnique({
+      where: { code: invitationCode.toUpperCase() }
+    })
+
+    if (!invitation) {
+      return NextResponse.json(
+        { error: 'Invalid invitation code' },
+        { status: 400 }
+      )
+    }
+
+    if (!invitation.isActive) {
+      return NextResponse.json(
+        { error: 'This invitation code has been deactivated' },
+        { status: 400 }
+      )
+    }
+
+    if (invitation.usedCount >= invitation.maxUses) {
+      return NextResponse.json(
+        { error: 'This invitation code has reached its usage limit' },
+        { status: 400 }
+      )
+    }
+
+    if (invitation.expiresAt && new Date() > invitation.expiresAt) {
+      return NextResponse.json(
+        { error: 'This invitation code has expired' },
+        { status: 400 }
+      )
+    }
+
+    // If invitation is email-restricted, validate email matches
+    if (invitation.email && invitation.email !== email) {
+      return NextResponse.json(
+        { error: 'This invitation code is restricted to a specific email address' },
         { status: 400 }
       )
     }
@@ -83,17 +133,12 @@ export async function POST(request: NextRequest) {
 
       // Create default provider type if specified
       if (providerTypeName) {
-        const providerTypeSlug = await generateUniqueProviderTypeSlug(
-          providerTypeName,
-          newTenant.id
-        )
-
         await tx.providerType.create({
           data: {
             tenantId: newTenant.id,
             name: providerTypeName,
             nameSingular: providerTypeNameSingular || providerTypeName,
-            slug: providerTypeSlug,
+            slug: generateSlug(providerTypeName),
             description: providerTypeDescription || null,
             icon: '👤',
             defaultSlotDuration: 60,
@@ -109,6 +154,16 @@ export async function POST(request: NextRequest) {
       return newTenant
     })
 
+    // Update invitation code usage
+    await prisma.invitationCode.update({
+      where: { id: invitation.id },
+      data: {
+        usedCount: { increment: 1 },
+        // Deactivate if reached max uses
+        isActive: invitation.usedCount + 1 >= invitation.maxUses ? false : invitation.isActive,
+      }
+    })
+
     return NextResponse.json(
       {
         message: 'Tenant created successfully',
@@ -116,10 +171,10 @@ export async function POST(request: NextRequest) {
           id: tenant.id,
           name: tenant.name,
           slug: tenant.slug,
-          email: tenant.email,
-          bookingUrl: `/${tenant.slug}/book`,
-          adminUrl: `/admin/${tenant.slug}`,
         },
+        slug: tenant.slug,
+        bookingUrl: `/${tenant.slug}/book`,
+        adminUrl: `/admin/${tenant.slug}`,
       },
       { status: 201 }
     )

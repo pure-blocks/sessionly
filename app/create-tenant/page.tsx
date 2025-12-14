@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 
@@ -18,12 +18,11 @@ interface TenantSuccess {
 export default function CreateTenantPage() {
   const { data: session } = useSession()
 
-  // Detect user's timezone
-  const detectedTimezone = typeof window !== 'undefined'
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
-    : 'UTC'
+  // Detect user's timezone (client-side only, after mount)
+  const [detectedTimezone, setDetectedTimezone] = useState('UTC')
 
   const [formData, setFormData] = useState({
+    invitationCode: '',
     name: '',
     email: '',
     slug: '',
@@ -32,13 +31,20 @@ export default function CreateTenantPage() {
     website: '',
     primaryColor: '#3B82F6',
     secondaryColor: '#10B981',
-    timezone: detectedTimezone,
+    timezone: 'UTC',
     currency: 'USD',
     // Provider type fields
     providerTypeName: '',
     providerTypeNameSingular: '',
     providerTypeDescription: '',
   })
+
+  // Detect timezone after component mounts (client-side only)
+  useEffect(() => {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    setDetectedTimezone(timezone)
+    setFormData(prev => ({ ...prev, timezone }))
+  }, [])
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -73,7 +79,7 @@ export default function CreateTenantPage() {
         return
       }
 
-      setSuccess(data.tenant)
+      setSuccess(data)
 
       // If user is logged in, update their account to be admin of this tenant
       if (session?.user?.email) {
@@ -174,6 +180,25 @@ export default function CreateTenantPage() {
                 {error}
               </div>
             )}
+
+            {/* Invitation Code */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Invitation Code *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.invitationCode}
+                onChange={(e) => setFormData({ ...formData, invitationCode: e.target.value.toUpperCase() })}
+                placeholder="Enter your invitation code"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                maxLength={16}
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                You need an invitation code to create an organization. Contact an administrator to get one.
+              </p>
+            </div>
 
             {/* Basic Information */}
             <div>
