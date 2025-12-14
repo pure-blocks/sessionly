@@ -239,9 +239,10 @@ model Client {
   phone             String?
   notes             String?           // Provider's notes about this client
 
-  // Custom pricing for this client
-  customHourlyRate  Float?            // Negotiated rate
-  customPricingNotes String?          // Notes about pricing arrangement
+  // Pricing table for this client (JSON)
+  // Example: { "individual_60": 75, "couple_60": 120, "group_60": 180 }
+  pricingTable      Json?             // Custom pricing options
+  pricingNotes      String?           // Notes about pricing arrangement
 
   // Account linking
   userId            String?           @unique
@@ -430,9 +431,11 @@ model Availability {
   maxCapacity     Int              @default(1)
   currentBookings Int              @default(0)
 
-  // Pricing
-  price           Float?
-  pricingRules    String?          // JSON string for flexible pricing rules
+  // Pricing table for this slot (JSON)
+  // Example: { "individual_60": 100, "couple_60": 150, "group_60": 200 }
+  pricingTable    Json?            // Pricing options for walk-ins/non-registered clients
+  price           Float?           // Legacy: base price (kept for backward compatibility)
+  pricingRules    String?          // Legacy: JSON string (kept for backward compatibility)
 
   // Status
   isActive        Boolean          @default(true)

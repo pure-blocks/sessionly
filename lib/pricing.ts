@@ -1,372 +1,96 @@
-import {
-  PricingRules,
-  PricingCalculation,
-  SimplePricing,
-  TieredPricing,
-  DiscountPricing,
-  FlatPricing,
-  HybridPricing,
-  StepBasedPricing,
-} from '@/types/pricing'
+/**
+ * Pricing Table System
+ * Simple pricing based on session type and duration
+ */
+
+export interface PricingOption {
+  type: 'individual' | 'couple' | 'group'
+  duration: number // in minutes
+  price: number
+  label?: string
+}
+
+export type PricingTable = Record<string, number>
 
 /**
- * Calculate pricing based on party size and pricing rules
+ * Parse pricing key to extract type and duration
+ * Format: "individual_60", "couple_90", "group_30"
  */
-export function calculatePrice(
-  partySize: number,
-  pricingRules: PricingRules | null,
-  fallbackPrice?: number
-): PricingCalculation {
-  // If no pricing rules, use fallback or default
-  if (!pricingRules) {
-    const price = fallbackPrice || 0
-    return {
-      totalPrice: price * partySize,
-      pricePerPerson: price,
-      breakdown: `${partySize} × $${price.toFixed(2)}`,
-      appliedRule: 'simple',
-    }
-  }
+export function parsePricingKey(key: string): {
+  type: 'individual' | 'couple' | 'group'
+  duration: number
+  partySize: number
+} | null {
+  const match = key.match(/^(individual|couple|group)_(\d+)$/)
+  if (!match) return null
 
-  switch (pricingRules.type) {
-    case 'simple':
-      return calculateSimplePricing(partySize, pricingRules)
-    case 'tiered':
-      return calculateTieredPricing(partySize, pricingRules)
-    case 'discount':
-      return calculateDiscountPricing(partySize, pricingRules)
-    case 'flat':
-      return calculateFlatPricing(partySize, pricingRules)
-    case 'hybrid':
-      return calculateHybridPricing(partySize, pricingRules)
-    case 'step-based':
-      return calculateStepBasedPricing(partySize, pricingRules)
-    default:
-      throw new Error('Invalid pricing rule type')
-  }
+  const type = match[1] as 'individual' | 'couple' | 'group'
+  const duration = parseInt(match[2])
+
+  // Determine party size based on type
+  const partySize = type === 'individual' ? 1 : type === 'couple' ? 2 : 3
+
+  return { type, duration, partySize }
 }
 
 /**
- * Simple pricing - single price per person
+ * Create pricing key from type and duration
  */
-function calculateSimplePricing(
-  partySize: number,
-  rules: SimplePricing
-): PricingCalculation {
-  const totalPrice = rules.pricePerPerson * partySize
-  return {
-    totalPrice,
-    pricePerPerson: rules.pricePerPerson,
-    breakdown: `${partySize} × $${rules.pricePerPerson.toFixed(2)}`,
-    appliedRule: 'simple',
-  }
+export function createPricingKey(
+  type: 'individual' | 'couple' | 'group',
+  duration: number
+): string {
+  return `${type}_${duration}`
 }
 
 /**
- * Tiered pricing - different price per person based on group size
+ * Get display label for pricing option
  */
-function calculateTieredPricing(
-  partySize: number,
-  rules: TieredPricing
-): PricingCalculation {
-  // Find applicable tier
-  const tier = rules.tiers.find(
-    (t) => partySize >= t.minSize && partySize <= t.maxSize
-  )
+export function getPricingLabel(key: string): string {
+  const parsed = parsePricingKey(key)
+  if (!parsed) return key
 
-  if (!tier) {
-    // If no tier matches, use the highest tier's price
-    const highestTier = rules.tiers[rules.tiers.length - 1]
-    const totalPrice = highestTier.pricePerPerson * partySize
-    return {
-      totalPrice,
-      pricePerPerson: highestTier.pricePerPerson,
-      breakdown: `${partySize} × $${highestTier.pricePerPerson.toFixed(2)} (max tier)`,
-      appliedRule: 'tiered',
-    }
-  }
+  const typeLabel =
+    parsed.type === 'individual'
+      ? '1 Person'
+      : parsed.type === 'couple'
+      ? 'Couple (2 people)'
+      : 'Group (3+ people)'
 
-  const totalPrice = tier.pricePerPerson * partySize
-  return {
-    totalPrice,
-    pricePerPerson: tier.pricePerPerson,
-    breakdown: `${partySize} × $${tier.pricePerPerson.toFixed(2)} (${tier.minSize}-${tier.maxSize} people)`,
-    appliedRule: 'tiered',
-  }
+  return `${typeLabel} - ${parsed.duration} min`
 }
 
 /**
- * Discount pricing - base price with percentage discounts for groups
+ * Validate pricing table structure
  */
-function calculateDiscountPricing(
-  partySize: number,
-  rules: DiscountPricing
-): PricingCalculation {
-  // Find applicable discount (highest one that applies)
-  const applicableDiscounts = rules.discounts
-    .filter((d) => partySize >= d.minSize)
-    .sort((a, b) => b.discountPercent - a.discountPercent)
-
-  const discount = applicableDiscounts[0]
-
-  if (!discount) {
-    // No discount applies
-    const totalPrice = rules.basePrice * partySize
-    return {
-      totalPrice,
-      pricePerPerson: rules.basePrice,
-      breakdown: `${partySize} × $${rules.basePrice.toFixed(2)}`,
-      appliedRule: 'discount',
-    }
-  }
-
-  // Apply discount
-  const discountMultiplier = 1 - discount.discountPercent / 100
-  const discountedPrice = rules.basePrice * discountMultiplier
-  const totalPrice = discountedPrice * partySize
-  const savings = (rules.basePrice - discountedPrice) * partySize
-
-  return {
-    totalPrice,
-    pricePerPerson: discountedPrice,
-    breakdown: `${partySize} × $${discountedPrice.toFixed(2)} (${discount.discountPercent}% off)`,
-    appliedRule: 'discount',
-    savings,
-  }
-}
-
-/**
- * Flat rate pricing - one price regardless of group size
- */
-function calculateFlatPricing(
-  partySize: number,
-  rules: FlatPricing
-): PricingCalculation {
-  if (partySize > rules.maxCapacity) {
-    throw new Error(`Party size exceeds maximum capacity of ${rules.maxCapacity}`)
-  }
-
-  const pricePerPerson = rules.totalPrice / partySize
-
-  return {
-    totalPrice: rules.totalPrice,
-    pricePerPerson,
-    breakdown: `Flat rate: $${rules.totalPrice.toFixed(2)} (up to ${rules.maxCapacity} people)`,
-    appliedRule: 'flat',
-  }
-}
-
-/**
- * Hybrid pricing - combination of different models
- */
-function calculateHybridPricing(
-  partySize: number,
-  rules: HybridPricing
-): PricingCalculation {
-  // Check if flat rate threshold is met
-  if (
-    rules.flatRateThreshold &&
-    rules.flatRatePrice &&
-    partySize >= rules.flatRateThreshold
-  ) {
-    const pricePerPerson = rules.flatRatePrice / partySize
-    return {
-      totalPrice: rules.flatRatePrice,
-      pricePerPerson,
-      breakdown: `Flat rate: $${rules.flatRatePrice.toFixed(2)} (${partySize}+ people)`,
-      appliedRule: 'hybrid-flat',
-    }
-  }
-
-  // Solo pricing
-  if (partySize === 1) {
-    return {
-      totalPrice: rules.soloPrice,
-      pricePerPerson: rules.soloPrice,
-      breakdown: `Solo session: $${rules.soloPrice.toFixed(2)}`,
-      appliedRule: 'hybrid-solo',
-    }
-  }
-
-  // Group pricing
-  if (partySize >= rules.groupMinSize) {
-    const totalPrice = rules.groupPrice * partySize
-    const savings = (rules.soloPrice - rules.groupPrice) * partySize
-    return {
-      totalPrice,
-      pricePerPerson: rules.groupPrice,
-      breakdown: `${partySize} × $${rules.groupPrice.toFixed(2)} (group rate)`,
-      appliedRule: 'hybrid-group',
-      savings,
-    }
-  }
-
-  // Between solo and group minimum - use solo price
-  const totalPrice = rules.soloPrice * partySize
-  return {
-    totalPrice,
-    pricePerPerson: rules.soloPrice,
-    breakdown: `${partySize} × $${rules.soloPrice.toFixed(2)}`,
-    appliedRule: 'hybrid-solo',
-  }
-}
-
-/**
- * Step-based pricing - price drops every STEP_SIZE people
- * Platform constant: STEP_SIZE = 2
- */
-function calculateStepBasedPricing(
-  partySize: number,
-  rules: StepBasedPricing
-): PricingCalculation {
-  const STEP_SIZE = 2 // Platform constant
-
-  // Step 1: Calculate step index
-  const stepIndex = Math.floor((partySize - 1) / STEP_SIZE)
-
-  // Step 2: Calculate raw price using compound drop rate
-  const dropMultiplier = Math.pow(1 - rules.dropRatePercent / 100, stepIndex)
-  const rawPrice = rules.soloPrice * dropMultiplier
-
-  // Step 3: Apply floor price
-  let pricePerPerson = Math.max(rawPrice, rules.minPricePerPerson)
-  let hitFloor = pricePerPerson === rules.minPricePerPerson && rawPrice < rules.minPricePerPerson
-
-  // Step 4: Calculate total
-  let totalPrice = pricePerPerson * partySize
-
-  // Step 5: Check minimum session earnings
-  let adjustedForMinimum = false
-  if (totalPrice < rules.minSessionEarnings) {
-    // Adjust price per person to meet minimum
-    pricePerPerson = rules.minSessionEarnings / partySize
-    totalPrice = rules.minSessionEarnings
-    adjustedForMinimum = true
-    hitFloor = false // Override floor if we're boosting for minimum
-  }
-
-  // Step 6: Round to nearest dollar
-  pricePerPerson = Math.round(pricePerPerson)
-  totalPrice = pricePerPerson * partySize
-
-  const savings = rules.soloPrice - pricePerPerson
-  const breakdown = adjustedForMinimum
-    ? `${partySize} × $${pricePerPerson.toFixed(0)} (min earnings adjusted)`
-    : hitFloor
-    ? `${partySize} × $${pricePerPerson.toFixed(0)} (floor price)`
-    : `${partySize} × $${pricePerPerson.toFixed(0)} (step ${stepIndex})`
-
-  return {
-    totalPrice,
-    pricePerPerson,
-    breakdown,
-    appliedRule: 'step-based',
-    savings: savings > 0 ? savings * partySize : undefined,
-  }
-}
-
-/**
- * Validate pricing rules
- */
-export function validatePricingRules(rules: PricingRules): {
+export function validatePricingTable(table: any): {
   valid: boolean
   errors: string[]
 } {
   const errors: string[] = []
 
-  try {
-    switch (rules.type) {
-      case 'simple':
-        if (rules.pricePerPerson <= 0) {
-          errors.push('Price per person must be greater than 0')
-        }
-        break
-
-      case 'tiered':
-        if (!rules.tiers || rules.tiers.length === 0) {
-          errors.push('At least one tier is required')
-        }
-        rules.tiers.forEach((tier, index) => {
-          if (tier.minSize < 1) {
-            errors.push(`Tier ${index + 1}: Minimum size must be at least 1`)
-          }
-          if (tier.maxSize < tier.minSize) {
-            errors.push(`Tier ${index + 1}: Maximum size must be >= minimum size`)
-          }
-          if (tier.pricePerPerson <= 0) {
-            errors.push(`Tier ${index + 1}: Price must be greater than 0`)
-          }
-        })
-        break
-
-      case 'discount':
-        if (rules.basePrice <= 0) {
-          errors.push('Base price must be greater than 0')
-        }
-        if (!rules.discounts || rules.discounts.length === 0) {
-          errors.push('At least one discount tier is required')
-        }
-        rules.discounts.forEach((discount, index) => {
-          if (discount.minSize < 2) {
-            errors.push(`Discount ${index + 1}: Minimum size must be at least 2`)
-          }
-          if (discount.discountPercent <= 0 || discount.discountPercent >= 100) {
-            errors.push(`Discount ${index + 1}: Discount must be between 0 and 100%`)
-          }
-        })
-        break
-
-      case 'flat':
-        if (rules.totalPrice <= 0) {
-          errors.push('Total price must be greater than 0')
-        }
-        if (rules.maxCapacity < 1) {
-          errors.push('Max capacity must be at least 1')
-        }
-        break
-
-      case 'hybrid':
-        if (rules.soloPrice <= 0) {
-          errors.push('Solo price must be greater than 0')
-        }
-        if (rules.groupPrice <= 0) {
-          errors.push('Group price must be greater than 0')
-        }
-        if (rules.groupMinSize < 2) {
-          errors.push('Group minimum size must be at least 2')
-        }
-        if (rules.flatRateThreshold && rules.flatRateThreshold < rules.groupMinSize) {
-          errors.push('Flat rate threshold must be >= group minimum size')
-        }
-        if (rules.flatRateThreshold && !rules.flatRatePrice) {
-          errors.push('Flat rate price is required when threshold is set')
-        }
-        break
-
-      case 'step-based':
-        if (rules.soloPrice <= 0) {
-          errors.push('Solo price must be greater than 0')
-        }
-        if (rules.dropRatePercent < 0 || rules.dropRatePercent > 100) {
-          errors.push('Drop rate must be between 0% and 100%')
-        }
-        if (rules.minPricePerPerson <= 0) {
-          errors.push('Minimum price per person must be greater than 0')
-        }
-        if (rules.minPricePerPerson > rules.soloPrice) {
-          errors.push('Minimum price per person cannot exceed solo price')
-        }
-        if (rules.minSessionEarnings < 0) {
-          errors.push('Minimum session earnings cannot be negative')
-        }
-        if (rules.minSessionEarnings > rules.soloPrice) {
-          errors.push('Minimum session earnings should not exceed solo price (single person booking would be cancelled)')
-        }
-        break
-    }
-  } catch {
-    errors.push('Invalid pricing rule structure')
+  if (!table || typeof table !== 'object') {
+    errors.push('Pricing table must be an object')
+    return { valid: false, errors }
   }
+
+  // Allow empty table
+  if (Object.keys(table).length === 0) {
+    return { valid: true, errors: [] }
+  }
+
+  // Validate each entry
+  Object.entries(table).forEach(([key, value]) => {
+    // Check key format
+    if (!parsePricingKey(key)) {
+      errors.push(`Invalid pricing key format: ${key}. Use format like "individual_60"`)
+    }
+
+    // Check value is a positive number
+    if (typeof value !== 'number' || value < 0) {
+      errors.push(`Price for ${key} must be a positive number, got ${value}`)
+    }
+  })
 
   return {
     valid: errors.length === 0,
@@ -375,24 +99,107 @@ export function validatePricingRules(rules: PricingRules): {
 }
 
 /**
- * Get pricing preview for multiple party sizes
+ * Find matching price from pricing table
  */
-export function getPricingPreview(
-  pricingRules: PricingRules | null,
-  maxSize: number = 10,
-  fallbackPrice?: number
-): Array<{ partySize: number; calculation: PricingCalculation }> {
-  const preview: Array<{ partySize: number; calculation: PricingCalculation }> = []
+export function getPriceFromTable(
+  table: PricingTable | null,
+  sessionType: 'individual' | 'couple' | 'group',
+  duration: number
+): number | null {
+  if (!table) return null
 
-  for (let size = 1; size <= maxSize; size++) {
-    try {
-      const calculation = calculatePrice(size, pricingRules, fallbackPrice)
-      preview.push({ partySize: size, calculation })
-    } catch {
-      // Skip invalid sizes
-      continue
-    }
+  const key = createPricingKey(sessionType, duration)
+  return table[key] ?? null
+}
+
+/**
+ * Get all pricing options from table as array
+ */
+export function getPricingOptions(table: PricingTable | null): PricingOption[] {
+  if (!table) return []
+
+  return Object.entries(table)
+    .map(([key, price]) => {
+      const parsed = parsePricingKey(key)
+      if (!parsed) return null
+
+      return {
+        type: parsed.type,
+        duration: parsed.duration,
+        price,
+        label: getPricingLabel(key),
+      }
+    })
+    .filter((opt): opt is PricingOption => opt !== null)
+}
+
+/**
+ * Calculate session duration from start and end time
+ * Format: "HH:MM"
+ */
+export function calculateDuration(startTime: string, endTime: string): number {
+  const [startHour, startMin] = startTime.split(':').map(Number)
+  const [endHour, endMin] = endTime.split(':').map(Number)
+
+  const startMinutes = startHour * 60 + startMin
+  const endMinutes = endHour * 60 + endMin
+
+  return endMinutes - startMinutes
+}
+
+/**
+ * Determine session type from party size
+ */
+export function getSessionTypeFromPartySize(
+  partySize: number
+): 'individual' | 'couple' | 'group' {
+  if (partySize === 1) return 'individual'
+  if (partySize === 2) return 'couple'
+  return 'group'
+}
+
+/**
+ * Create default pricing table based on base rate
+ */
+export function createDefaultPricingTable(baseRate: number = 100): PricingTable {
+  return {
+    individual_30: Math.round(baseRate * 0.5),
+    individual_60: baseRate,
+    individual_90: Math.round(baseRate * 1.4),
+    couple_30: Math.round(baseRate * 0.75),
+    couple_60: Math.round(baseRate * 1.5),
+    couple_90: Math.round(baseRate * 2.0),
+    group_30: Math.round(baseRate * 1.0),
+    group_60: Math.round(baseRate * 2.0),
+    group_90: Math.round(baseRate * 2.7),
+  }
+}
+
+/**
+ * Find best matching price from table
+ * If exact match not found, tries to find closest duration
+ */
+export function findBestPrice(
+  table: PricingTable | null,
+  sessionType: 'individual' | 'couple' | 'group',
+  duration: number
+): { price: number | null; exactMatch: boolean } {
+  if (!table) return { price: null, exactMatch: false }
+
+  // Try exact match first
+  const exactPrice = getPriceFromTable(table, sessionType, duration)
+  if (exactPrice !== null) {
+    return { price: exactPrice, exactMatch: true }
   }
 
-  return preview
+  // Try to find closest duration for this session type
+  const options = getPricingOptions(table)
+    .filter(opt => opt.type === sessionType)
+    .sort((a, b) => Math.abs(a.duration - duration) - Math.abs(b.duration - duration))
+
+  if (options.length > 0) {
+    return { price: options[0].price, exactMatch: false }
+  }
+
+  return { price: null, exactMatch: false }
 }

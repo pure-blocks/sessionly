@@ -135,8 +135,8 @@ export async function PATCH(
       name,
       phone,
       notes,
-      customHourlyRate,
-      customPricingNotes,
+      pricingTable,
+      pricingNotes,
       isActive,
     } = body
 
@@ -147,8 +147,8 @@ export async function PATCH(
         ...(name && { name }),
         ...(phone !== undefined && { phone }),
         ...(notes !== undefined && { notes }),
-        ...(customHourlyRate !== undefined && { customHourlyRate }),
-        ...(customPricingNotes !== undefined && { customPricingNotes }),
+        ...(pricingTable !== undefined && { pricingTable }),
+        ...(pricingNotes !== undefined && { pricingNotes }),
         ...(isActive !== undefined && { isActive }),
       }
     })

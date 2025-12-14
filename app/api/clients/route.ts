@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { randomBytes } from 'crypto'
+import { validatePricingTable } from '@/lib/pricing'
 
 /**
  * POST /api/clients
@@ -38,8 +39,8 @@ export async function POST(request: NextRequest) {
       email,
       phone,
       notes,
-      customHourlyRate,
-      customPricingNotes,
+      pricingTable,
+      pricingNotes,
       sendInvite = true,
     } = body
 
@@ -49,6 +50,17 @@ export async function POST(request: NextRequest) {
         { error: 'Name and email are required' },
         { status: 400 }
       )
+    }
+
+    // Validate pricing table if provided
+    if (pricingTable) {
+      const validation = validatePricingTable(pricingTable)
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: 'Invalid pricing table', details: validation.errors },
+          { status: 400 }
+        )
+      }
     }
 
     // Check if client already exists for this provider
@@ -78,8 +90,8 @@ export async function POST(request: NextRequest) {
         email: email.toLowerCase(),
         phone: phone || null,
         notes: notes || null,
-        customHourlyRate: customHourlyRate || null,
-        customPricingNotes: customPricingNotes || null,
+        pricingTable: pricingTable || null,
+        pricingNotes: pricingNotes || null,
         inviteToken,
         invitedAt: sendInvite ? new Date() : null,
       }
@@ -96,7 +108,7 @@ export async function POST(request: NextRequest) {
           name: client.name,
           email: client.email,
           phone: client.phone,
-          customHourlyRate: client.customHourlyRate,
+          pricingTable: client.pricingTable,
         },
         inviteLink: sendInvite
           ? `${process.env.NEXTAUTH_URL}/client/accept-invite?token=${inviteToken}`
@@ -152,8 +164,8 @@ export async function GET(request: NextRequest) {
         email: true,
         phone: true,
         notes: true,
-        customHourlyRate: true,
-        customPricingNotes: true,
+        pricingTable: true,
+        pricingNotes: true,
         userId: true,
         inviteAcceptedAt: true,
         createdAt: true,
