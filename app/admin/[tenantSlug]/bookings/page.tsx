@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -33,11 +33,7 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>('all')
 
-  useEffect(() => {
-    fetchBookings()
-  }, [tenantSlug])
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/bookings`)
       const data = await res.json()
@@ -47,7 +43,11 @@ export default function BookingsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug])
+
+  useEffect(() => {
+    fetchBookings()
+  }, [fetchBookings])
 
   const updateBookingStatus = async (id: string, status: string) => {
     try {

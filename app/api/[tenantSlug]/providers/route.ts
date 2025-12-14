@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  { params }: { params: Promise<{ tenantSlug: string }> }
 ) {
   try {
     const { tenantId } = await getTenantContext()
@@ -40,10 +40,11 @@ export async function GET(
     })
 
     return NextResponse.json({ providers })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Providers fetch error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch providers', details: error.message },
+      { error: 'Failed to fetch providers', details: errorMessage },
       { status: 500 }
     )
   }
@@ -51,7 +52,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  { params }: { params: Promise<{ tenantSlug: string }> }
 ) {
   try {
     const { tenantId } = await getTenantContext()
@@ -177,6 +178,7 @@ export async function POST(
         providerType: provider.providerType.name,
       }).catch(error => {
         console.error('Failed to send provider invitation email:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       })
     }
 
@@ -191,10 +193,11 @@ export async function POST(
       },
       { status: 201 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider creation error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to create provider', details: error.message },
+      { error: 'Failed to create provider', details: errorMessage },
       { status: 500 }
     )
   }

@@ -181,7 +181,7 @@ export default function RegisterPage() {
                 placeholder="my-organization"
               />
               <p className="mt-1 text-xs text-gray-500">
-                Enter your organization's slug to become an admin
+                Enter your organization&apos;s slug to become an admin
               </p>
             </div>
 

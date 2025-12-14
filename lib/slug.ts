@@ -15,7 +15,7 @@ export function generateSlug(name: string): string {
  * Generates a unique slug for a tenant
  */
 export async function generateUniqueTenantSlug(name: string): Promise<string> {
-  let slug = generateSlug(name)
+  const slug = generateSlug(name)
   let counter = 1
   let finalSlug = slug
 
@@ -34,7 +34,7 @@ export async function generateUniqueProviderSlug(
   name: string,
   tenantId: string
 ): Promise<string> {
-  let slug = generateSlug(name)
+  const slug = generateSlug(name)
   let counter = 1
   let finalSlug = slug
 
@@ -57,7 +57,7 @@ export async function generateUniqueProviderTypeSlug(
   name: string,
   tenantId: string
 ): Promise<string> {
-  let slug = generateSlug(name)
+  const slug = generateSlug(name)
   let counter = 1
   let finalSlug = slug
 
@@ -80,7 +80,7 @@ export async function generateUniqueCategorySlug(
   name: string,
   tenantId: string
 ): Promise<string> {
-  let slug = generateSlug(name)
+  const slug = generateSlug(name)
   let counter = 1
   let finalSlug = slug
 

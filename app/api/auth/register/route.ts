@@ -81,16 +81,18 @@ export async function POST(request: NextRequest) {
       tenantName: tenant?.name,
     }).catch(error => {
       console.error('Failed to send welcome email:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     })
 
     return NextResponse.json(
       { message: 'User created successfully', user },
       { status: 201 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to create user', details: error.message },
+      { error: 'Failed to create user', details: errorMessage },
       { status: 500 }
     )
   }

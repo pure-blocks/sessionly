@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import UserMenu from '@/app/components/UserMenu'
@@ -53,11 +53,7 @@ export default function ProvidersPage() {
     defaultHourlyRate: '',
   })
 
-  useEffect(() => {
-    fetchData()
-  }, [tenantSlug])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [providersRes, typesRes] = await Promise.all([
         fetch(`/api/${tenantSlug}/providers`),
@@ -81,7 +77,11 @@ export default function ProvidersPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, formData.providerTypeId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -269,7 +269,7 @@ export default function ProvidersPage() {
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  This will be used as the default price for this provider's availability slots
+                  This will be used as the default price for this provider&apos;s availability slots
                 </p>
               </div>
 

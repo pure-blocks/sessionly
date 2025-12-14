@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
 interface ProviderType {
@@ -23,7 +23,6 @@ interface ProviderType {
 
 export default function ProviderTypesPage() {
   const params = useParams()
-  const router = useRouter()
   const tenantSlug = params.tenantSlug as string
 
   const [providerTypes, setProviderTypes] = useState<ProviderType[]>([])
@@ -39,11 +38,7 @@ export default function ProviderTypesPage() {
     allowGroupSessions: false,
   })
 
-  useEffect(() => {
-    fetchProviderTypes()
-  }, [tenantSlug])
-
-  const fetchProviderTypes = async () => {
+  const fetchProviderTypes = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/provider-types`)
       const data = await res.json()
@@ -53,7 +48,11 @@ export default function ProviderTypesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug])
+
+  useEffect(() => {
+    fetchProviderTypes()
+  }, [fetchProviderTypes])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

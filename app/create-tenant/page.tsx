@@ -1,12 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 
+interface TenantSuccess {
+  tenant: {
+    id: string
+    slug: string
+    name: string
+  }
+  adminUrl: string
+  bookingUrl: string
+  slug: string
+}
+
 export default function CreateTenantPage() {
-  const router = useRouter()
   const { data: session } = useSession()
 
   // Detect user's timezone
@@ -33,7 +42,7 @@ export default function CreateTenantPage() {
 
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<any>(null)
+  const [success, setSuccess] = useState<TenantSuccess | null>(null)
 
   // Auto-generate slug from name
   const handleNameChange = (name: string) => {
@@ -99,7 +108,7 @@ export default function CreateTenantPage() {
             </h2>
 
             <p className="text-gray-600 mb-6">
-              Your organization <span className="font-semibold">{success.name}</span> has been created.
+              Your organization <span className="font-semibold">{success.tenant.name}</span> has been created.
             </p>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-left">
@@ -290,7 +299,7 @@ export default function CreateTenantPage() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    e.g., "Trainers", "Coaches", "Therapists"
+                    e.g., &quot;Trainers&quot;, &quot;Coaches&quot;, &quot;Therapists&quot;
                   </p>
                 </div>
 

@@ -4,13 +4,14 @@ import { getTenantContext, verifyTenantOwnership } from '@/lib/tenant-context'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const { tenantId } = await getTenantContext()
 
     const providerType = await prisma.providerType.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -30,10 +31,11 @@ export async function GET(
     await verifyTenantOwnership(providerType.tenantId)
 
     return NextResponse.json({ providerType })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider type fetch error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch provider type', details: error.message },
+      { error: 'Failed to fetch provider type', details: errorMessage },
       { status: 500 }
     )
   }
@@ -41,15 +43,16 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const { tenantId } = await getTenantContext()
     const body = await request.json()
 
     // Verify the provider type belongs to this tenant
     const providerType = await prisma.providerType.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!providerType) {
@@ -63,15 +66,16 @@ export async function PATCH(
 
     // Update the provider type
     const updated = await prisma.providerType.update({
-      where: { id: params.id },
+      where: { id },
       data: body,
     })
 
     return NextResponse.json({ providerType: updated })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider type update error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to update provider type', details: error.message },
+      { error: 'Failed to update provider type', details: errorMessage },
       { status: 500 }
     )
   }
@@ -79,14 +83,15 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const { tenantId } = await getTenantContext()
 
     // Verify the provider type belongs to this tenant
     const providerType = await prisma.providerType.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: { providers: true },
@@ -114,14 +119,15 @@ export async function DELETE(
     }
 
     await prisma.providerType.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: 'Provider type deleted' })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider type deletion error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to delete provider type', details: error.message },
+      { error: 'Failed to delete provider type', details: errorMessage },
       { status: 500 }
     )
   }

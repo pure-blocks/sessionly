@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 import { prisma } from './prisma'
-import { Tenant } from '@prisma/client'
+import { Tenant, TenantConfig } from '@prisma/client'
 
 export class TenantNotFoundError extends Error {
   constructor(message: string = 'Tenant not found') {
@@ -76,7 +76,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant | null> {
  * Helper to create tenant-scoped query filters
  * Use this to ensure all queries are scoped to the current tenant
  */
-export async function tenantQuery<T extends Record<string, any>>(
+export async function tenantQuery<T extends Record<string, unknown>>(
   additionalFilters?: T
 ): Promise<T & { tenantId: string }> {
   const { tenantId } = await getTenantContext()
@@ -104,7 +104,7 @@ export async function verifyTenantOwnership(resourceTenantId: string): Promise<v
  * Get tenant with related configuration
  */
 export async function getTenantWithConfig(): Promise<
-  Tenant & { config: any | null }
+  Tenant & { config: TenantConfig | null }
 > {
   const { tenantId } = await getTenantContext()
 

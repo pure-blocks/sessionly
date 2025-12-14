@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import UserMenu from '@/app/components/UserMenu'
@@ -11,13 +11,23 @@ interface ProviderType {
   icon: string | null
 }
 
+interface Provider {
+  id: string
+  name: string
+  email: string
+  bio: string | null
+  providerTypeId: string
+  defaultHourlyRate: number | null
+  profileImageUrl: string | null
+}
+
 export default function EditProviderPage() {
   const params = useParams()
   const router = useRouter()
   const tenantSlug = params.tenantSlug as string
   const providerId = params.id as string
 
-  const [provider, setProvider] = useState<any>(null)
+  const [provider, setProvider] = useState<Provider | null>(null)
   const [providerTypes, setProviderTypes] = useState<ProviderType[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -31,11 +41,7 @@ export default function EditProviderPage() {
     profileImageUrl: '',
   })
 
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [providerRes, typesRes] = await Promise.all([
         fetch(`/api/${tenantSlug}/providers/${providerId}`),
@@ -63,7 +69,11 @@ export default function EditProviderPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, providerId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -252,7 +262,7 @@ export default function EditProviderPage() {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                This will be used as the default price for this provider's availability slots
+                This will be used as the default price for this provider&apos;s availability slots
               </p>
             </div>
 

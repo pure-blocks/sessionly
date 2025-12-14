@@ -1,17 +1,29 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import UserMenu from '@/app/components/UserMenu'
 
+interface Provider {
+  id: string
+  name: string
+  slug: string
+  title?: string | null
+  yearsExperience?: number | null
+  videoUrl?: string | null
+  certifications?: string | null
+  specialties?: string | null
+  galleryImages?: string | null
+  socialLinks?: string | null
+}
+
 export default function ProviderPortfolioEditor() {
   const params = useParams()
-  const router = useRouter()
   const tenantSlug = params.tenantSlug as string
   const providerId = params.id as string
 
-  const [provider, setProvider] = useState<any>(null)
+  const [provider, setProvider] = useState<Provider | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -31,11 +43,7 @@ export default function ProviderPortfolioEditor() {
     },
   })
 
-  useEffect(() => {
-    fetchProvider()
-  }, [providerId])
-
-  const fetchProvider = async () => {
+  const fetchProvider = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/providers/${providerId}`)
       const data = await res.json()
@@ -78,7 +86,11 @@ export default function ProviderPortfolioEditor() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, providerId])
+
+  useEffect(() => {
+    fetchProvider()
+  }, [fetchProvider])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

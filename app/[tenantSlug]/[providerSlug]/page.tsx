@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 
 interface PageProps {
   params: {
@@ -267,7 +266,7 @@ export default async function ProviderPortfolioPage({ params }: PageProps) {
                           </svg>
                         ))}
                       </div>
-                      <p className="text-gray-700 italic mb-3">"{testimonial.text}"</p>
+                      <p className="text-gray-700 italic mb-3">&quot;{testimonial.text}&quot;</p>
                       <div className="flex items-center gap-3">
                         {testimonial.clientImage && (
                           <img

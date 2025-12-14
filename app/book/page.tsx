@@ -407,7 +407,7 @@ export default function BookPage() {
                   </p>
                   <p className="text-sm text-blue-700 dark:text-blue-300">
                     {slot.currentBookings} {slot.currentBookings === 1 ? 'person has' : 'people have'} already booked this slot.
-                    You can join and everyone's cost will be adjusted based on total participants.
+                    You can join and everyone&apos;s cost will be adjusted based on total participants.
                   </p>
                 </div>
               )}

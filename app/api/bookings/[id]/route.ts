@@ -10,7 +10,7 @@ export async function GET(
     const booking = await prisma.booking.findUnique({
       where: { id },
       include: {
-        trainer: true,
+        provider: true,
         availability: true
       }
     })
@@ -42,7 +42,7 @@ export async function PATCH(
         ...(notes !== undefined && { notes })
       },
       include: {
-        trainer: true,
+        provider: true,
         availability: true
       }
     })

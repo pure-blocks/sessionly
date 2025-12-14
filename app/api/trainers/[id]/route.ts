@@ -8,15 +8,7 @@ export async function GET(
   try {
     const { id } = await params
     const trainer = await prisma.trainer.findUnique({
-      where: { id },
-      include: {
-        availability: {
-          orderBy: { date: 'asc' }
-        },
-        bookings: {
-          include: { availability: true }
-        }
-      }
+      where: { id }
     })
 
     if (!trainer) {

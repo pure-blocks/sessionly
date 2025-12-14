@@ -9,7 +9,7 @@ export interface FieldDefinition {
   type: FieldType
   required: boolean
   options?: string[]  // For select fields
-  defaultValue?: any
+  defaultValue?: unknown
   min?: number  // For number fields
   max?: number  // For number fields
   pattern?: string  // Regex pattern for validation
@@ -30,11 +30,9 @@ export class ValidationError extends Error {
  * Validates custom field values against their definitions
  */
 export function validateCustomFields(
-  values: Record<string, any>,
+  values: Record<string, unknown>,
   definitions: FieldDefinition[]
 ): void {
-  const errors: string[] = []
-
   for (const def of definitions) {
     const value = values[def.name]
 
@@ -70,7 +68,7 @@ export function validateCustomFields(
         break
 
       case 'select':
-        if (!def.options || !def.options.includes(value)) {
+        if (typeof value !== 'string' || !def.options || !def.options.includes(value)) {
           throw new ValidationError(
             def.name,
             `${def.label} must be one of: ${def.options?.join(', ')}`
@@ -79,6 +77,9 @@ export function validateCustomFields(
         break
 
       case 'email':
+        if (typeof value !== 'string') {
+          throw new ValidationError(def.name, `${def.label} must be text`)
+        }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (!emailRegex.test(value)) {
           throw new ValidationError(def.name, `${def.label} must be a valid email`)
@@ -86,6 +87,9 @@ export function validateCustomFields(
         break
 
       case 'tel':
+        if (typeof value !== 'string') {
+          throw new ValidationError(def.name, `${def.label} must be text`)
+        }
         const phoneRegex = /^[\d\s\-\+\(\)]+$/
         if (!phoneRegex.test(value)) {
           throw new ValidationError(
@@ -142,7 +146,7 @@ export function parseFieldDefinitions(json: string | null): FieldDefinition[] {
 /**
  * Parse JSON custom field values safely
  */
-export function parseCustomFieldValues(json: string | null): Record<string, any> {
+export function parseCustomFieldValues(json: string | null): Record<string, unknown> {
   if (!json) return {}
 
   try {
@@ -161,7 +165,7 @@ export function parseCustomFieldValues(json: string | null): Record<string, any>
 /**
  * Serialize custom field values to JSON string
  */
-export function serializeCustomFields(values: Record<string, any>): string {
+export function serializeCustomFields(values: Record<string, unknown>): string {
   return JSON.stringify(values)
 }
 
@@ -169,7 +173,7 @@ export function serializeCustomFields(values: Record<string, any>): string {
  * Validate and serialize custom fields in one step
  */
 export function validateAndSerialize(
-  values: Record<string, any>,
+  values: Record<string, unknown>,
   definitions: FieldDefinition[]
 ): string {
   validateCustomFields(values, definitions)
@@ -179,8 +183,8 @@ export function validateAndSerialize(
 /**
  * Get default values from field definitions
  */
-export function getDefaultValues(definitions: FieldDefinition[]): Record<string, any> {
-  const defaults: Record<string, any> = {}
+export function getDefaultValues(definitions: FieldDefinition[]): Record<string, unknown> {
+  const defaults: Record<string, unknown> = {}
 
   for (const def of definitions) {
     if (def.defaultValue !== undefined) {
@@ -195,27 +199,30 @@ export function getDefaultValues(definitions: FieldDefinition[]): Record<string,
  * Validate booking form data
  */
 export function validateBookingFormData(
-  formData: Record<string, any>,
+  formData: Record<string, unknown>,
   requiredFields: string[] = ['clientName', 'clientEmail']
 ): void {
   for (const field of requiredFields) {
-    if (!formData[field] || formData[field].trim() === '') {
+    const value = formData[field]
+    if (!value || (typeof value === 'string' && value.trim() === '')) {
       throw new ValidationError(field, `${field} is required`)
     }
   }
 
   // Validate email format
-  if (formData.clientEmail) {
+  const clientEmail = formData.clientEmail
+  if (clientEmail && typeof clientEmail === 'string') {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.clientEmail)) {
+    if (!emailRegex.test(clientEmail)) {
       throw new ValidationError('clientEmail', 'Invalid email format')
     }
   }
 
   // Validate phone if provided
-  if (formData.clientPhone) {
+  const clientPhone = formData.clientPhone
+  if (clientPhone && typeof clientPhone === 'string') {
     const phoneRegex = /^[\d\s\-\+\(\)]+$/
-    if (!phoneRegex.test(formData.clientPhone)) {
+    if (!phoneRegex.test(clientPhone)) {
       throw new ValidationError('clientPhone', 'Invalid phone number format')
     }
   }

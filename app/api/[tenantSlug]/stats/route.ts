@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  { params }: { params: Promise<{ tenantSlug: string }> }
 ) {
   try {
-    const { tenantSlug } = params
+    const { tenantSlug } = await params
 
     // Get tenant
     const tenant = await prisma.tenant.findUnique({

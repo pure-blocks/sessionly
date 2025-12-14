@@ -6,17 +6,18 @@ import { format } from 'date-fns'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
 
     // Verify the booking belongs to this tenant
     const booking = await prisma.booking.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
-    if (!booking) {
+    if (!booking || !booking.tenantId) {
       return NextResponse.json(
         { error: 'Booking not found' },
         { status: 404 }
@@ -30,7 +31,7 @@ export async function PATCH(
 
     // Update the booking
     const updated = await prisma.booking.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...body,
         ...(isCancellation ? { cancelledAt: new Date() } : {}),
@@ -67,10 +68,11 @@ export async function PATCH(
     }
 
     return NextResponse.json({ booking: updated })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Booking update error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to update booking', details: error.message },
+      { error: 'Failed to update booking', details: errorMessage },
       { status: 500 }
     )
   }

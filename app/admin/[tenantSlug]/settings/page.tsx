@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -38,11 +38,7 @@ export default function SettingsPage() {
     currency: 'USD',
   })
 
-  useEffect(() => {
-    fetchTenant()
-  }, [tenantSlug])
-
-  const fetchTenant = async () => {
+  const fetchTenant = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/tenant`)
       const data = await res.json()
@@ -66,7 +62,11 @@ export default function SettingsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug])
+
+  useEffect(() => {
+    fetchTenant()
+  }, [fetchTenant])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

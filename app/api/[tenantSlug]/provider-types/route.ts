@@ -5,7 +5,7 @@ import { generateUniqueProviderTypeSlug } from '@/lib/slug'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  { params }: { params: Promise<{ tenantSlug: string }> }
 ) {
   try {
     const { tenantId } = await getTenantContext()
@@ -21,10 +21,11 @@ export async function GET(
     })
 
     return NextResponse.json({ providerTypes })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider types fetch error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch provider types', details: error.message },
+      { error: 'Failed to fetch provider types', details: errorMessage },
       { status: 500 }
     )
   }
@@ -32,7 +33,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  { params }: { params: Promise<{ tenantSlug: string }> }
 ) {
   try {
     const { tenantId } = await getTenantContext()
@@ -81,10 +82,11 @@ export async function POST(
       { message: 'Provider type created', providerType },
       { status: 201 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider type creation error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to create provider type', details: error.message },
+      { error: 'Failed to create provider type', details: errorMessage },
       { status: 500 }
     )
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
     const trainerId = searchParams.get('trainerId')
     const clientEmail = searchParams.get('clientEmail')
 
-    const where: any = {}
+    const where: Prisma.BookingWhereInput = {}
 
     if (trainerId) {
       where.trainerId = trainerId
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     const bookings = await prisma.booking.findMany({
       where,
       include: {
-        trainer: true,
+        provider: true,
         availability: true
       },
       orderBy: {
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
           pricePerPerson
         },
         include: {
-          trainer: true,
+          provider: true,
           availability: true
         }
       })
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(booking, { status: 201 })
   } catch (error) {
     console.error('Booking error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
   }
 }

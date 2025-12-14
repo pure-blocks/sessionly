@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -24,11 +24,7 @@ export default function AdminToolsPage() {
   const [processing, setProcessing] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  useEffect(() => {
-    fetchStats()
-  }, [tenantSlug])
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/stats`)
       const data = await res.json()
@@ -38,7 +34,11 @@ export default function AdminToolsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug])
+
+  useEffect(() => {
+    fetchStats()
+  }, [fetchStats])
 
   const handleCleanup = async (type: string, confirm: string) => {
     if (!window.confirm(confirm)) return

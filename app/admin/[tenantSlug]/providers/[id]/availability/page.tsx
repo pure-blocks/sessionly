@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns'
@@ -75,11 +75,7 @@ export default function ProviderAvailabilityPage() {
   // Days of the week
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i))
 
-  useEffect(() => {
-    fetchData()
-  }, [tenantSlug, providerId, currentWeekStart])
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       const [providerRes, availabilityRes] = await Promise.all([
@@ -92,12 +88,33 @@ export default function ProviderAvailabilityPage() {
 
       setProvider(providerData.provider)
       setAvailability(Array.isArray(availabilityData) ? availabilityData : [])
+
+      // Load pricing configuration from provider's default pricing rules
+      if (providerData.provider?.defaultPricingRules) {
+        try {
+          const rules = JSON.parse(providerData.provider.defaultPricingRules)
+          if (rules.type === 'step-based') {
+            setPricingConfig({
+              soloPrice: rules.soloPrice,
+              dropRatePercent: rules.dropRatePercent,
+              minPricePerPerson: rules.minPricePerPerson,
+              minSessionEarnings: rules.minSessionEarnings
+            })
+          }
+        } catch (e) {
+          console.error('Failed to parse pricing rules:', e)
+        }
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, providerId])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   const getSlotsForDayAndTime = (day: Date, timeSlot: string): Availability[] => {
     return availability.filter((slot) => {
@@ -138,7 +155,11 @@ export default function ProviderAvailabilityPage() {
           timeSlots: [{ startTime: selectedSlot.time, endTime }],
           isGroupSession: newSlotForm.isGroupSession,
           maxCapacity: newSlotForm.isGroupSession ? newSlotForm.maxCapacity : 1,
-          price: priceValue
+          price: priceValue,
+          pricingRules: pricingConfig ? JSON.stringify({
+            type: 'step-based',
+            ...pricingConfig
+          }) : null
         }),
       })
 
@@ -566,10 +587,26 @@ export default function ProviderAvailabilityPage() {
             <SimplePricingConfig
               initialConfig={pricingConfig}
               maxCapacity={20}
-              onSave={(config) => {
+              onSave={async (config) => {
                 setPricingConfig(config)
-                setShowPricingConfig(false)
-                alert('Pricing configuration saved! It will be applied to new availability slots.')
+                // Save to provider's default pricing rules
+                try {
+                  await fetch(`/api/${tenantSlug}/providers/${providerId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      defaultPricingRules: JSON.stringify({
+                        type: 'step-based',
+                        ...config
+                      })
+                    })
+                  })
+                  setShowPricingConfig(false)
+                  alert('Pricing configuration saved! It will be applied to new availability slots.')
+                } catch (error) {
+                  console.error('Failed to save pricing config:', error)
+                  alert('Failed to save pricing configuration')
+                }
               }}
               onCancel={() => setShowPricingConfig(false)}
             />
@@ -631,7 +668,7 @@ function SetWeeklyHoursDialog({
       for (let week = 0; week < weeksToApply; week++) {
         const weekStart = addWeeks(startDate, week)
 
-        Object.entries(weekSchedule).forEach(([day, config], dayIndex) => {
+        Object.entries(weekSchedule).forEach(([_, config], dayIndex) => {
           if (config.enabled) {
             const date = addDays(weekStart, dayIndex)
             const dateStr = format(date, 'yyyy-MM-dd')
@@ -677,8 +714,8 @@ function SetWeeklyHoursDialog({
           maxCapacity: isGroupSession ? maxCapacity : 1,
           price: priceValue,
           pricingRules: pricingConfig ? JSON.stringify({
-            type: 'progressive-drop',
-            config: pricingConfig
+            type: 'step-based',
+            ...pricingConfig
           }) : null
         }),
       })

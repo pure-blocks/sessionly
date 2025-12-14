@@ -364,7 +364,7 @@ export function validatePricingRules(rules: PricingRules): {
         }
         break
     }
-  } catch (error) {
+  } catch {
     errors.push('Invalid pricing rule structure')
   }
 
@@ -388,7 +388,7 @@ export function getPricingPreview(
     try {
       const calculation = calculatePrice(size, pricingRules, fallbackPrice)
       preview.push({ partySize: size, calculation })
-    } catch (error) {
+    } catch {
       // Skip invalid sizes
       continue
     }

@@ -56,10 +56,11 @@ export async function POST(request: NextRequest) {
       { message: 'User updated successfully', user },
       { status: 200 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update tenant error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to update user', details: error.message },
+      { error: 'Failed to update user', details: errorMessage },
       { status: 500 }
     )
   }

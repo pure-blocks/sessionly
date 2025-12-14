@@ -4,13 +4,14 @@ import { getTenantContext, verifyTenantOwnership } from '@/lib/tenant-context'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const { tenantId } = await getTenantContext()
 
     const provider = await prisma.provider.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         providerType: true,
         category: true,
@@ -34,10 +35,11 @@ export async function GET(
     await verifyTenantOwnership(provider.tenantId)
 
     return NextResponse.json({ provider })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider fetch error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch provider', details: error.message },
+      { error: 'Failed to fetch provider', details: errorMessage },
       { status: 500 }
     )
   }
@@ -45,15 +47,16 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const { tenantId } = await getTenantContext()
     const body = await request.json()
 
     // Verify the provider belongs to this tenant
     const provider = await prisma.provider.findUnique({
-      where: { id: params.id },
+      where: { id },
     })
 
     if (!provider) {
@@ -67,7 +70,7 @@ export async function PATCH(
 
     // Update the provider
     const updated = await prisma.provider.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
       include: {
         providerType: true,
@@ -76,10 +79,11 @@ export async function PATCH(
     })
 
     return NextResponse.json({ provider: updated })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider update error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to update provider', details: error.message },
+      { error: 'Failed to update provider', details: errorMessage },
       { status: 500 }
     )
   }
@@ -87,14 +91,15 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { tenantSlug: string; id: string } }
+  { params }: { params: Promise<{ tenantSlug: string; id: string }> }
 ) {
   try {
+    const { id } = await params
     const { tenantId } = await getTenantContext()
 
     // Verify the provider belongs to this tenant
     const provider = await prisma.provider.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: {
@@ -125,14 +130,15 @@ export async function DELETE(
     }
 
     await prisma.provider.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
 
     return NextResponse.json({ message: 'Provider deleted' })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Provider deletion error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to delete provider', details: error.message },
+      { error: 'Failed to delete provider', details: errorMessage },
       { status: 500 }
     )
   }

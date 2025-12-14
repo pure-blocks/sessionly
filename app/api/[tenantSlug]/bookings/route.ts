@@ -5,10 +5,10 @@ import { sendBookingConfirmationToClient, sendBookingNotificationToProvider } fr
 import { format } from 'date-fns'
 import { calculatePrice } from '@/lib/pricing'
 import { PricingRules } from '@/types/pricing'
+import { Prisma } from '@prisma/client'
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  request: NextRequest
 ) {
   try {
     const { tenantId } = await getTenantContext()
@@ -16,7 +16,7 @@ export async function GET(
     const providerId = searchParams.get('providerId')
     const status = searchParams.get('status')
 
-    const where: any = { tenantId }
+    const where: Prisma.BookingWhereInput = { tenantId }
 
     if (providerId) {
       where.providerId = providerId
@@ -47,18 +47,18 @@ export async function GET(
     })
 
     return NextResponse.json({ bookings })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Bookings fetch error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch bookings', details: error.message },
+      { error: 'Failed to fetch bookings', details: errorMessage },
       { status: 500 }
     )
   }
 }
 
 export async function POST(
-  request: NextRequest,
-  { params }: { params: { tenantSlug: string } }
+  request: NextRequest
 ) {
   try {
     const { tenantId } = await getTenantContext()
@@ -71,7 +71,6 @@ export async function POST(
       notes,
       partySize = 1,
       openToSharing = false,
-      sessionType,
       sessionPrice
     } = body
 
@@ -180,10 +179,11 @@ export async function POST(
     }
 
     return NextResponse.json(booking, { status: 201 })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Booking error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to create booking', details: error.message },
+      { error: 'Failed to create booking', details: errorMessage },
       { status: 500 }
     )
   }

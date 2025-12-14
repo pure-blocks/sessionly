@@ -128,9 +128,6 @@ export default function SimplePricingConfig({
     onSave(config)
   }
 
-  const firstCancelled = preview.find((row) => !row.meetsMinimum)
-  const allValid = preview.every((row) => row.meetsMinimum)
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto">
       <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">

@@ -3,13 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    const trainers = await prisma.trainer.findMany({
-      include: {
-        _count: {
-          select: { availability: true, bookings: true }
-        }
-      }
-    })
+    const trainers = await prisma.trainer.findMany()
     return NextResponse.json(trainers)
   } catch (error) {
     return NextResponse.json({ error: 'Failed to fetch trainers' }, { status: 500 })

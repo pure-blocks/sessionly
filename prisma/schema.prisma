@@ -181,6 +181,7 @@ model Provider {
 
   // Pricing
   defaultHourlyRate Float?            // Default price per hour
+  defaultPricingRules String?         // JSON string for default pricing configuration
 
   // Custom fields (stored as JSON)
   customFields      String?           // JSON string

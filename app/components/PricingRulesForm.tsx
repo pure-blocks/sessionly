@@ -120,7 +120,7 @@ export default function PricingRulesForm({
                 min="0"
                 value={(rules as SimplePricing).pricePerPerson}
                 onChange={(e) =>
-                  setRules({ ...rules, pricePerPerson: parseFloat(e.target.value) })
+                  setRules({ ...(rules as SimplePricing), pricePerPerson: parseFloat(e.target.value) })
                 }
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               />
@@ -231,7 +231,7 @@ export default function PricingRulesForm({
                 min="0"
                 value={(rules as DiscountPricing).basePrice}
                 onChange={(e) =>
-                  setRules({ ...rules, basePrice: parseFloat(e.target.value) })
+                  setRules({ ...(rules as DiscountPricing), basePrice: parseFloat(e.target.value) })
                 }
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -321,7 +321,7 @@ export default function PricingRulesForm({
                 min="0"
                 value={(rules as FlatPricing).totalPrice}
                 onChange={(e) =>
-                  setRules({ ...rules, totalPrice: parseFloat(e.target.value) })
+                  setRules({ ...(rules as FlatPricing), totalPrice: parseFloat(e.target.value) })
                 }
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -335,7 +335,7 @@ export default function PricingRulesForm({
                 min="1"
                 value={(rules as FlatPricing).maxCapacity}
                 onChange={(e) =>
-                  setRules({ ...rules, maxCapacity: parseInt(e.target.value) })
+                  setRules({ ...(rules as FlatPricing), maxCapacity: parseInt(e.target.value) })
                 }
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -356,7 +356,7 @@ export default function PricingRulesForm({
                 min="0"
                 value={(rules as HybridPricing).soloPrice}
                 onChange={(e) =>
-                  setRules({ ...rules, soloPrice: parseFloat(e.target.value) })
+                  setRules({ ...(rules as HybridPricing), soloPrice: parseFloat(e.target.value) })
                 }
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -371,7 +371,7 @@ export default function PricingRulesForm({
                 min="0"
                 value={(rules as HybridPricing).groupPrice}
                 onChange={(e) =>
-                  setRules({ ...rules, groupPrice: parseFloat(e.target.value) })
+                  setRules({ ...(rules as HybridPricing), groupPrice: parseFloat(e.target.value) })
                 }
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -385,7 +385,7 @@ export default function PricingRulesForm({
                 min="2"
                 value={(rules as HybridPricing).groupMinSize}
                 onChange={(e) =>
-                  setRules({ ...rules, groupMinSize: parseInt(e.target.value) })
+                  setRules({ ...(rules as HybridPricing), groupMinSize: parseInt(e.target.value) })
                 }
                 className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -403,7 +403,7 @@ export default function PricingRulesForm({
                     value={(rules as HybridPricing).flatRateThreshold || ''}
                     onChange={(e) =>
                       setRules({
-                        ...rules,
+                        ...(rules as HybridPricing),
                         flatRateThreshold: e.target.value ? parseInt(e.target.value) : undefined,
                       })
                     }
@@ -419,7 +419,7 @@ export default function PricingRulesForm({
                     value={(rules as HybridPricing).flatRatePrice || ''}
                     onChange={(e) =>
                       setRules({
-                        ...rules,
+                        ...(rules as HybridPricing),
                         flatRatePrice: e.target.value ? parseFloat(e.target.value) : undefined,
                       })
                     }

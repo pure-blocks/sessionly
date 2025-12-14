@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date')
     const available = searchParams.get('available')
 
-    const where: any = {}
+    const where: Prisma.AvailabilityWhereInput = {}
 
     // Support both providerId and trainerId (backward compatibility)
     const id = providerId || trainerId
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(availability)
   } catch (error) {
     console.error('Availability fetch error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: 'Failed to fetch availability' }, { status: 500 })
   }
 }
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
 
     const availability = await prisma.availability.create({
       data: {
-        trainerId,
+        providerId: trainerId,  // Use providerId (trainerId is legacy parameter name)
         date: new Date(date),
         startTime,
         endTime,
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
         currentBookings: 0
       },
       include: {
-        trainer: true
+        provider: true
       }
     })
 

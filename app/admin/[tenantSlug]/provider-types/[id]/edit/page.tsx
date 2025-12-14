@@ -1,9 +1,23 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import UserMenu from '@/app/components/UserMenu'
+
+interface ProviderType {
+  id: string
+  name: string
+  nameSingular: string
+  description: string | null
+  icon: string | null
+  defaultSlotDuration: number
+  defaultSlotCapacity: number
+  allowGroupSessions: boolean
+  _count?: {
+    providers: number
+  }
+}
 
 export default function EditProviderTypePage() {
   const params = useParams()
@@ -11,7 +25,7 @@ export default function EditProviderTypePage() {
   const tenantSlug = params.tenantSlug as string
   const providerTypeId = params.id as string
 
-  const [providerType, setProviderType] = useState<any>(null)
+  const [providerType, setProviderType] = useState<ProviderType | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -25,11 +39,7 @@ export default function EditProviderTypePage() {
     allowGroupSessions: false,
   })
 
-  useEffect(() => {
-    fetchProviderType()
-  }, [])
-
-  const fetchProviderType = async () => {
+  const fetchProviderType = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/provider-types/${providerTypeId}`)
       const data = await res.json()
@@ -51,7 +61,11 @@ export default function EditProviderTypePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, providerTypeId])
+
+  useEffect(() => {
+    fetchProviderType()
+  }, [fetchProviderType])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

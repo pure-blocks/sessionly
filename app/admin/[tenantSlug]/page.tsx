@@ -2,11 +2,7 @@ import { getTenant, getTenantContext } from '@/lib/tenant-context'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
-export default async function AdminDashboard({
-  params,
-}: {
-  params: { tenantSlug: string }
-}) {
+export default async function AdminDashboard() {
   try {
     const tenant = await getTenant()
     const { tenantId } = await getTenantContext()
@@ -132,7 +128,7 @@ export default async function AdminDashboard({
                       <div>
                         <p className="font-semibold">{booking.clientName}</p>
                         <p className="text-sm text-gray-600">
-                          {booking.provider.name} •{' '}
+                          {booking.provider?.name || 'No Provider'} •{' '}
                           {new Date(
                             booking.availability.date
                           ).toLocaleDateString()}{' '}
@@ -166,10 +162,10 @@ export default async function AdminDashboard({
                 🚀 Getting Started
               </h3>
               <p className="text-blue-800 mb-4">
-                Welcome to your admin dashboard! Here's how to get started:
+                Welcome to your admin dashboard! Here&apos;s how to get started:
               </p>
               <ol className="list-decimal list-inside space-y-2 text-blue-800">
-                <li>Add a provider type (e.g., "Personal Trainers")</li>
+                <li>Add a provider type (e.g., &quot;Personal Trainers&quot;)</li>
                 <li>Add providers to your organization</li>
                 <li>Configure their availability slots</li>
                 <li>Share your booking page with clients</li>
@@ -187,12 +183,13 @@ export default async function AdminDashboard({
         </main>
       </div>
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred'
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-lg max-w-md">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-700 mb-4">{error.message}</p>
+          <p className="text-gray-700 mb-4">{errorMessage}</p>
           <Link
             href="/api/tenants"
             className="text-blue-600 hover:underline"

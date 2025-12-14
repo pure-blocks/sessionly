@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
 
     // Check if the availability exists
@@ -19,7 +20,7 @@ export async function PATCH(
     }
 
     // Build update data object - only include fields that are provided
-    const updateData: any = {}
+    const updateData: Prisma.AvailabilityUpdateInput = {}
 
     if (body.startTime !== undefined) updateData.startTime = body.startTime
     if (body.endTime !== undefined) updateData.endTime = body.endTime
@@ -46,16 +47,17 @@ export async function PATCH(
     }, { status: 200 })
   } catch (error) {
     console.error('Update availability error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: 'Failed to update availability' }, { status: 500 })
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
 
     // Check if the availability exists and has no bookings
     const availability = await prisma.availability.findUnique({
@@ -81,6 +83,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'Availability deleted successfully' }, { status: 200 })
   } catch (error) {
     console.error('Delete availability error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ error: 'Failed to delete availability' }, { status: 500 })
   }
 }

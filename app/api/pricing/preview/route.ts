@@ -31,10 +31,11 @@ export async function POST(request: NextRequest) {
       { error: 'Either partySize or maxSize is required' },
       { status: 400 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Pricing preview error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to calculate pricing', details: error.message },
+      { error: 'Failed to calculate pricing', details: errorMessage },
       { status: 500 }
     )
   }

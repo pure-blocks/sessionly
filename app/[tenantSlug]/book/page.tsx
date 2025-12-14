@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns'
 
@@ -51,17 +51,7 @@ export default function BookPage() {
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(selectedWeekStart, i))
 
-  useEffect(() => {
-    fetchProviders()
-  }, [tenantSlug])
-
-  useEffect(() => {
-    if (selectedProvider) {
-      fetchAvailability()
-    }
-  }, [selectedProvider, selectedWeekStart])
-
-  const fetchProviders = async () => {
+  const fetchProviders = useCallback(async () => {
     try {
       const res = await fetch(`/api/${tenantSlug}/providers`)
       const data = await res.json()
@@ -69,9 +59,9 @@ export default function BookPage() {
     } catch (error) {
       console.error('Failed to fetch providers:', error)
     }
-  }
+  }, [tenantSlug])
 
-  const fetchAvailability = async () => {
+  const fetchAvailability = useCallback(async () => {
     if (!selectedProvider) return
 
     try {
@@ -81,7 +71,17 @@ export default function BookPage() {
     } catch (error) {
       console.error('Failed to fetch availability:', error)
     }
-  }
+  }, [selectedProvider])
+
+  useEffect(() => {
+    fetchProviders()
+  }, [fetchProviders])
+
+  useEffect(() => {
+    if (selectedProvider) {
+      fetchAvailability()
+    }
+  }, [selectedProvider, fetchAvailability])
 
   const getSlotsForDay = (day: Date): Availability[] => {
     return availability

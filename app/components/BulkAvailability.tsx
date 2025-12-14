@@ -94,7 +94,7 @@ export default function BulkAvailability({ trainerId, onSuccess }: BulkAvailabil
 
       const existing = new Set<string>()
       if (Array.isArray(data)) {
-        data.forEach((slot: any) => {
+        data.forEach((slot: { date: string; startTime: string; endTime: string }) => {
           const dateStr = format(new Date(slot.date), 'yyyy-MM-dd')
           const key = `${dateStr}_${slot.startTime}_${slot.endTime}`
           existing.add(key)
